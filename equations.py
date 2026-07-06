@@ -1,20 +1,7 @@
 # ФАЙЛ: EQUATIONS 
-# СТРУКТУРА(кратко):
-#   EQUATIONS():
-#     deg_to_rad() ------------> Перевод в радианы.
-#     derivative_mass_to_time() ------------> Вычисление зависимости массы от времени. 
-#     derivative_fuel_to_time() ------------> Вычисление зависимости топлива от времени. 
-#     derivative_velocity_to_density() -----> Вычисление зависимости скорости от плотности воздуха
-#     derivative_velocity_to_time() --------> Вычисление зависимости скорости от времени.  
-#     derivative_angle_tett_to_time() ------> Вычисление зависимости угла θ от времени
-#     derivative_X_to_time() ---------------> Вычисление зависимости угла X от времени
-#     derivative_Z_to_time() ---------------> Вычисление зависимости угла 𝑍 от времени
-#     is_straight_flight() -----------------> Вычисление условия движения без рыскания
-#     air_density_at_height() --------------> Вычисление плотности воздуха на высоте
-
 """ ИМПОРТЫ """
 from constants import (
-    FUEL_CONSUMPION, INITIAL_MASS, END_TIME, G, INITIAL_H,
+    FUEL_CONSUMPION, INITIAL_MASS, END_TIME, G,
     COEF_K as K,  SQUARE as S, RHO_AT_SEA_LEVEL
 )
 
@@ -44,19 +31,11 @@ class EQUATIONS():
             self.v_sorted,
             self.cx_sorted,
             bounds_error=False,
-            # Если V меньше минимума — берём первый Cx, если больше максимума — последний Cx
             fill_value=(self.cx_sorted[0], self.cx_sorted[-1]),
         )
 
-        self.INITIAL_H = 0
-        self.INITIAL_TETHA = self.deg_to_rad(45)
-        self.INITIAL_X = 0
-        self.INITIAL_V = 0
-        self.INITAL_Z = 0
-        self.INITAL_TIME = 1
-        self.INITIAL_MASS = INITIAL_MASS
         self.S = S
-        self.K = K  # важно: используем K из constants
+        self.K = K
 
     # ======================= Перевод в радианы. ====================== #
     @staticmethod
@@ -75,10 +54,8 @@ class EQUATIONS():
     @staticmethod
     def derivative_fuel_to_time(FLOW_TIME: float) -> float:
         if FLOW_TIME > END_TIME:
-            # После окончания работы двигателя топлива нет
             return 0.0
         else:
-            # Пока двигатель работает, топливо расходуется
             return FUEL_CONSUMPION * FLOW_TIME
 
     # ================= Вычисление плотности воздуха. ================= #
@@ -88,7 +65,7 @@ class EQUATIONS():
     # ==== Вычисление лобового сопротивления от скорости воздуха и плотности атмосферы. ====== #
     def X(self, V: float, HEIGHT: float) -> float:
         rho_0 = self.air_density_at_height(HEIGHT)
-        Cx = self.get_Cx_for_V(np.array([V]))[0]  # получаем одно значение Cx
+        Cx = self.get_Cx_for_V(np.array([V]))[0]
         result = Cx * self.K * (rho_0 * V**2 / 2.0) * self.S
         return result
 
@@ -96,19 +73,9 @@ class EQUATIONS():
         """Получить Cx через интерполяцию для заданных скоростей (массив или число)."""
         return self.cx_of_v(V_query)
 
-    def simulate_euler(self, t_end, dt, V0, theta0, psi0, x0, H0, z0):
-        """
-        Интегрирование системы уравнений методом Эйлера.
-        
-        Параметры:
-        t_end: время моделирования (сек)
-        dt: шаг интегрирования (сек)
-        V0, theta0, psi0, x0, H0, z0: начальные условия
-        
-        Возвращает: словарь с массивами результатов для построения графиков
-        """
+    def simulate_euler(self, t_end, dt, V0, theta0_deg, psi0_deg, x0, H0, z0):
         n_steps = int(t_end / dt) + 1
-
+        d = [0]*1000
         # Выделяем массивы под результаты
         t_arr = np.zeros(n_steps)
         V_arr = np.zeros(n_steps)
@@ -117,6 +84,10 @@ class EQUATIONS():
         x_arr = np.zeros(n_steps)
         H_arr = np.zeros(n_steps)
         z_arr = np.zeros(n_steps)
+
+        # Конвертируем углы из градусов в радианы сразу при инициализации
+        theta0 = self.deg_to_rad(theta0_deg)
+        psi0 = self.deg_to_rad(psi0_deg)
 
         # Устанавливаем начальные условия в первые элементы массивов
         t_arr[0] = 0.0
@@ -127,65 +98,61 @@ class EQUATIONS():
         H_arr[0] = H0
         z_arr[0] = z0
 
-        g = G  # из constants, либо можно оставить 9.81
+        g = G
 
-        # Цикл по шагам — теперь работаем с отдельными значениями, а не массивами целиком
         for i in range(n_steps - 1):
             t = t_arr[i]
 
             # Текущие значения переменных (по одному числу на шаге)
             V = V_arr[i]
-            theta = theta_arr[i]
-            psi = psi_arr[i]
+            theta = theta_arr[i]  # уже в радианах
+            psi = psi_arr[i]     # уже в радианах
             x = x_arr[i]
             H = H_arr[i]
             z = z_arr[i]
 
             # --- РАСЧЕТ ПРОИЗВОДНЫХ (Правые части уравнений) ---
 
-            # 1. Плотность воздуха на текущей высоте
             rho = self.air_density_at_height(H)
-
-            # 2. Сила сопротивления X(V, rho) — считаем для одной скорости V
             Cx = self.get_Cx_for_V(np.array([V]))[0]
             X_force = Cx * self.K * (rho * V**2 / 2.0) * self.S
 
-            # 3. Тяга R(t). Пример: постоянная тяга или функция времени.
             R_thrust = 4000.0  # замени на свою логику расчета тяги
-
-            # 4. Масса m(t) — можно сделать функцией времени, если нужно
             m = self.derivative_mass_to_time(t)
 
-            # --- Вычисляем dY/dt согласно твоим формулам ---
-
-            # dVk/dt = (R - X - mg*sin(theta)) / m
             dV_dt = (R_thrust - X_force - m * g * math.sin(theta)) / m
 
-            # dTheta/dt = -g*cos(theta) / Vk
             if abs(V) < 1e-6:
                 dTheta_dt = 0.0
             else:
                 dTheta_dt = -g * math.cos(theta) / V
 
-            # dPsi/dt = 0 (согласно твоему уравнению)
             dPsi_dt = 0.0
 
-            # dx/dt, dH/dt, dz/dt
             dx_dt = V * math.cos(theta) * math.cos(psi)
             dH_dt = V * math.sin(theta)
             dz_dt = -V * math.cos(theta) * math.sin(psi)
 
-            # --- ОБНОВЛЕНИЕ ПЕРЕМЕННЫХ (Шаг Эйлера) ---
-            # Y_new = Y_old + dY/dt * dt
-
+            # Шаг Эйлера
             V_arr[i+1] = V + dV_dt * dt
             theta_arr[i+1] = theta + dTheta_dt * dt
             psi_arr[i+1] = psi + dPsi_dt * dt
             x_arr[i+1] = x + dx_dt * dt
             H_arr[i+1] = H + dH_dt * dt
             z_arr[i+1] = z + dz_dt * dt
+
             if H_arr[i] < 0:
-                break
+                # Обрезаем массивы до текущего шага, чтобы не рисовать «под землёй»
+                return {
+                    'time': t_arr[:i+1],
+                    'V': V_arr[:i+1],
+                    'theta': theta_arr[:i+1],
+                    'psi': psi_arr[:i+1],
+                    'x': x_arr[:i+1],
+                    'H': H_arr[:i+1],
+                    'z': z_arr[:i+1]
+                }
+
             t_arr[i+1] = t + dt
 
         return {
@@ -204,13 +171,17 @@ if __name__ == "__main__":
     sim = EQUATIONS(data)
 
     V0 = 100.0
-    theta0 = math.radians(5.0) 
-    psi0 = 0.0
+    theta0_deg = 30.0
+    psi0_deg = 0.0 
     x0, H0, z0 = 0.0, 0.0, 0.0
 
-    results = sim.simulate_euler(t_end=10.0, dt=0.01, 
-                                V0=V0, theta0=theta0, psi0=psi0, 
-                                x0=x0, H0=H0, z0=z0)
+    results = sim.simulate_euler(
+        t_end=60.0, dt=0.01,
+        V0=V0,
+        theta0_deg=theta0_deg,
+        psi0_deg=psi0_deg,
+        x0=x0, H0=H0, z0=z0
+    )
 
     import plotly.graph_objects as go
 
