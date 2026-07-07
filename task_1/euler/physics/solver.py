@@ -1,12 +1,12 @@
 # euler/solver.py
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
-from euler.physics import Interpolate
-from euler.physics import (
+from task_1.euler.physics import Interpolate
+from task_1.euler.physics import (
     get_Mt, get_P, get_X, get_dV_dt, get_theta, dx_dt, dH_dt, dz_dt
 )
-from euler.config import INITIAL_MASS, FUEL_CONSUMPION, h as H, theta as THETA, N_max as N
-from euler.data import convert_xlsx_to_dict
+from task_1.euler.config import INITIAL_MASS, FUEL_CONSUMPION, h as H, theta as THETA, N_max as N
+from task_1.euler.data import convert_xlsx_to_dict
 
 
 def _get_initial_state():

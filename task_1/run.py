@@ -10,8 +10,8 @@
 # run.py
 # run.py
 # run.py
-from euler.physics import solve_both_parallel
-from euler.utils import plot_trajectory_combined
+from task_1.euler.physics import solve_both_parallel
+from task_1.euler.utils import plot_trajectory_combined
 
 def main():
     res_e, steps_e, res_r, steps_r, t_e, t_r = solve_both_parallel()

@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Optional
 import numpy as np
 from scipy.interpolate import interp1d
-from euler.data.loader import convert_xlsx_to_dict
+from task_1.euler.data.loader import convert_xlsx_to_dict
 
 """ ФАЙЛЫ ПРОЕКТА """
 # ..

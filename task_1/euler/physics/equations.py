@@ -21,7 +21,7 @@
 import numpy as np
 
 """ ФАЙЛЫ ПРОЕКТА """
-from euler.config import (
+from task_1.euler.config import (
     INITIAL_MASS,
     FUEL_CONSUMPION,
     RHO_AT_SEA_LEVEL,
