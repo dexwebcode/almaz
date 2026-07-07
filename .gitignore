@@ -21,7 +21,5 @@ htmlcov/
 # --- Лог-файлы и временные результаты ---
 *.log
 logs/
-tmp/
-temp/
-output/
-results/
+│   ├── equations.py         # уравнения движения (ускорения, силы)
+│   ├── euler.py             # метод Эйлера
