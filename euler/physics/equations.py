@@ -25,8 +25,8 @@ from euler.config import (
     INITIAL_MASS,
     FUEL_CONSUMPION,
     RHO_AT_SEA_LEVEL,
-    K,
-    S
+    K,S,THRUST,
+    G, M, dPsi_dt
 )
 
 """ PYTHON МОДУЛИ """
@@ -38,32 +38,50 @@ def get_Mt(flow_time: float) -> float:
     # ВЫХОД: Топливо кончилось --> False
     #        Топливо есть  --> float: 123.2
 
-    M = INITIAL_MASS - FUEL_CONSUMPION * flow_time
-    if M > 0:
-        return INITIAL_MASS - FUEL_CONSUMPION * flow_time
-    else:
-        return False
+    m = INITIAL_MASS - FUEL_CONSUMPION * flow_time
+    return max(0.0, m)
 
 # ================== Вычисление плотности воздуха. ================== #
 def get_P(flow_height: float) -> float:
     # ВХОД:  Текущая высота
     # ВЫХОД: Плотность --> float: 123.2
 
-    if flow_height >= 0:
-        return RHO_AT_SEA_LEVEL * math.exp(- flow_height / 10000.0)
-    else:
-        return False
+    if flow_height < 0:
+        return 0.0
+    return RHO_AT_SEA_LEVEL * math.exp(-flow_height / 10000.0)
 
 # == Вычисление лобового сопротивления с учетом плотности воздуха. == #
 def get_X(Interpolator, V: float, flow_height: float) -> float:
 
     rho_0 = get_P(flow_height)
-
     Cx = Interpolator.get_cx(V)
+    return Cx * K * (rho_0 * V**2 / 2.0) * S
 
-    result = Cx * K * (rho_0 * V**2 / 2.0) * S
-    return result
+# ======= Вычисление остальных простых функций по dt. ============= #
 
+def get_dV_dt(Interpolator, V: float, flow_height: float, \
+              theta:float, time:float):
+    mass = get_Mt(time)
+    if mass < 1e-6:
+        # Если массы почти нет, ускорение не считаем (или считаем только от сопротивления)
+        return 0.0
 
+    drag = get_X(Interpolator, V, flow_height)
+    numerator = THRUST - drag - mass * G * math.sin(theta)
+    return numerator / mass
 
+def get_theta(V: float, theta:float):
+    if abs(V) < 1e-6:
+        return 0.0
+    return -G * math.cos(theta) / V
 
+def dx_dt(V: float, theta:float):
+    return V * math.cos(theta) * math.cos(dPsi_dt)
+
+def dH_dt(V: float, theta:float):
+    return V * math.sin(theta)
+
+def dz_dt(V: float, theta:float):
+    return -V * math.cos(theta) * math.sin(dPsi_dt)
+
+# ================================================================== #
