@@ -18,7 +18,7 @@
 #     main()
 
 # ========================================================
-
+import numpy as np
 
 """ ФАЙЛЫ ПРОЕКТА """
 from euler.config import (
@@ -76,12 +76,12 @@ def get_theta(V: float, theta:float):
     return -G * math.cos(theta) / V
 
 def dx_dt(V: float, theta:float):
-    return V * math.cos(theta) * math.cos(dPsi_dt)
+    return V * math.cos(theta) * math.cos(np.radians(dPsi_dt))
 
 def dH_dt(V: float, theta:float):
     return V * math.sin(theta)
 
 def dz_dt(V: float, theta:float):
-    return -V * math.cos(theta) * math.sin(dPsi_dt)
+    return -V * math.cos(theta) * math.sin(np.radians(dPsi_dt))
 
 # ================================================================== #

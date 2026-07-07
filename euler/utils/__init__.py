@@ -1,3 +1,3 @@
-from .plotter import plot_flight
+from .plotter import plot_trajectory_combined
 
-__all__ = ["plot_flight"]
+__all__ = ["plot_trajectory_combined"]

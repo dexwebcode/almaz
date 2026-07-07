@@ -6,15 +6,20 @@
 """ PYTHON МОДУЛИ """
 
 """ ФАЙЛЫ ПРОЕКТА """
-from euler.physics.euler import run_euler
-from euler.utils import plot_flight
+# run.py
+# run.py
+# run.py
+# run.py
+from euler.physics import solve_both_parallel
+from euler.utils import plot_trajectory_combined
 
 def main():
-    # Начальные условия
-    results = run_euler()
+    res_e, steps_e, res_r, steps_r, t_e, t_r = solve_both_parallel()
 
-    # Отрисовка
-    plot_flight(results)
+    print(f"Эйлер: шагов={steps_e}, время={t_e:.4f} с")
+    print(f"RK4:   шагов={steps_r}, время={t_r:.4f} с")
+
+    plot_trajectory_combined(res_e, res_r, time_e=t_e, time_r=t_r)
 
 if __name__ == "__main__":
     main()
