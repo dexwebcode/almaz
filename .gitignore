@@ -1,0 +1,27 @@
+# --- Python bytecode и кэш ---
+__pycache__/
+
+
+# --- Виртуальные окружения (выбери то, что используешь) ---
+.venv/
+venv/
+ENV/
+env/
+
+# --- IDE и редакторы ---
+.vscode/
+
+# --- Артефакты тестирования и покрытия ---
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# --- Лог-файлы и временные результаты ---
+*.log
+logs/
+tmp/
+temp/
+output/
+results/

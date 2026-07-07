@@ -1,17 +1,34 @@
 # ФАЙЛ: EQUATIONS 
+# СТРУКТУРА(кратко):
+#   EQUATIONS():
+#     deg_to_rad() ------------> Перевод в радианы.
+#     derivative_mass_to_time() ------------> Вычисление зависимости массы от времени. 
+#     derivative_fuel_to_time() ------------> Вычисление зависимости топлива от времени. 
+#     derivative_velocity_to_density() -----> Вычисление зависимости скорости от плотности воздуха
+#     derivative_velocity_to_time() --------> Вычисление зависимости скорости от времени.  
+#     derivative_angle_tett_to_time() ------> Вычисление зависимости угла θ от времени
+#     derivative_X_to_time() ---------------> Вычисление зависимости угла X от времени
+#     derivative_Z_to_time() ---------------> Вычисление зависимости угла 𝑍 от времени
+#     is_straight_flight() -----------------> Вычисление условия движения без рыскания
+#     air_density_at_height() --------------> Вычисление плотности воздуха на высоте
+ 
 """ ИМПОРТЫ """
-from constants import (
+from eiler.config.constants import (
     FUEL_CONSUMPION, INITIAL_MASS, END_TIME, G,
     COEF_K as K,  SQUARE as S, RHO_AT_SEA_LEVEL
 )
 
-from covert_files import convert
 from typing import Callable
 import math
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
+import pandas as pd
+
+
+def convert(file_path: str) -> pd.DataFrame:
+    return pd.read_excel(file_path)
 
 class EQUATIONS():
     def __init__(self, data: pd.DataFrame):
@@ -168,9 +185,10 @@ class EQUATIONS():
 
 if __name__ == "__main__":
     data = convert("data.xlsx")
+    print(data)
     sim = EQUATIONS(data)
 
-    V0 = 100.0
+    V0 = data['V'][1]
     theta0_deg = 30.0
     psi0_deg = 0.0 
     x0, H0, z0 = 0.0, 0.0, 0.0
