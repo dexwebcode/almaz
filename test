@@ -1,0 +1,125 @@
+import math
+import numpy as np
+from main.src.core.solver import runge_kutta
+from main.src.utils import create_trajectory_from_plot # Твой 3D плоттер
+
+# =====================================================================
+# НАСТРОЙКИ ЦЕЛИ И ОКРУЖАЮЩЕЙ СРЕДЫ
+# =====================================================================
+TARGET_DISTANCE = 150.0  # Цель по оси X (дальность)
+TARGET_Z = 50.0         # Цель по оси Z (боковое смещение)
+
+# Задаем ветер как единый вектор:
+WIND_SPEED = 3.0        # Скорость ветра, м/с
+WIND_ANGLE_DEG = 45.0   # Угол ветра в градусах (например, 45° дует по диагонали)
+
+# =====================================================================
+# ФУНКЦИЯ РАЗЛОЖЕНИЯ ВЕТРА
+# =====================================================================
+def decompose_wind(speed, angle_deg):
+    """
+    Раскладывает общий вектор ветра на составляющие W_x и W_z.
+    """
+    angle_rad = math.radians(angle_deg)
+    w_x = speed * math.cos(angle_rad)
+    w_z = speed * math.sin(angle_rad)
+    return w_x, w_z
+
+# =====================================================================
+# ДВОЙНАЯ ДИХОТОМИЯ С УЧЕТОМ ВЕТРА
+# =====================================================================
+def get_trajectory_end(theta_deg, psi_deg, w_x, w_z):
+    """Вызывает РК4 с углами и проекциями ветра, возвращает финальные X и Z"""
+    result = runge_kutta(math.radians(theta_deg), math.radians(psi_deg), w_x, w_z)
+    return result[:, 2][-1], result[:, 3][-1]
+
+def find_psi_with_wind(theta_deg, psi_min, psi_max, w_x, w_z, eps=0.0001):
+    """Внутренняя дихотомия: корректирует угол psi (азимут) под снос ветра"""
+    _, z_min = get_trajectory_end(theta_deg, psi_min, w_x, w_z)
+    diff_min = z_min - TARGET_Z
+    
+    while abs(psi_max - psi_min) > eps:
+        psi_mid = (psi_min + psi_max) / 2
+        _, z_mid = get_trajectory_end(theta_deg, psi_mid, w_x, w_z)
+        diff_mid = z_mid - TARGET_Z
+        
+        if abs(diff_mid) <= eps:
+            return psi_mid
+            
+        if (diff_min > 0 and diff_mid > 0) or (diff_min < 0 and diff_mid < 0):
+            psi_min = psi_mid
+            diff_min = diff_mid
+        else:
+            psi_max = psi_mid
+            
+    return (psi_min + psi_max) / 2
+
+def get_root_3d_with_wind(theta_min, theta_max, psi_min, psi_max, w_x, w_z, eps=0.0001):
+    """Внешняя дихотомия: подбирает угол theta (возвышение)"""
+    best_psi_for_min = find_psi_with_wind(theta_min, psi_min, psi_max, w_x, w_z, eps)
+    x_min, _ = get_trajectory_end(theta_min, best_psi_for_min, w_x, w_z)
+    diff_min = x_min - TARGET_DISTANCE
+    
+    while abs(theta_max - theta_min) > eps:
+        theta_mid = (theta_min + theta_max) / 2
+        
+        # Корректируем азимут для текущего шага по высоте
+        best_psi_mid = find_psi_with_wind(theta_mid, psi_min, psi_max, w_x, w_z, eps)
+        
+        x_mid, _ = get_trajectory_end(theta_mid, best_psi_mid, w_x, w_z)
+        diff_mid = x_mid - TARGET_DISTANCE
+        
+        if abs(diff_mid) <= eps:
+            return theta_mid, best_psi_mid
+            
+        if (diff_min > 0 and diff_mid > 0) or (diff_min < 0 and diff_mid < 0):
+            theta_min = theta_mid
+            diff_min = diff_mid
+        else:
+            theta_max = theta_mid
+            
+    final_theta = (theta_min + theta_max) / 2
+    final_psi = find_psi_with_wind(final_theta, psi_min, psi_max, w_x, w_z, eps)
+    return final_theta, final_psi
+
+# =====================================================================
+# ГЛАВНАЯ ФУНКЦИЯ ЗАПУСКА
+# =====================================================================
+def main():
+    # 1. Раскладываем ветер на вектора перед расчетом
+    w_x, w_z = decompose_wind(WIND_SPEED, WIND_ANGLE_DEG)
+    
+    print(f"Вектор ветра успешно разложен:")
+    print(f" -> Продольный (W_x): {round(w_x, 3)} м/с")
+    print(f" -> Боковой    (W_z): {round(w_z, 3)} м/с\n")
+    print("Запуск баллистического поиска...")
+
+    # 2. Ищем углы (задаем диапазон азимута пошире, от -60 до 60, чтобы пушка довернулась против ветра)
+    final_theta, final_psi = get_root_3d_with_wind(
+        theta_min=1, theta_max=45, 
+        psi_min=-60, psi_max=60, 
+        w_x=w_x, w_z=w_z
+    )
+    
+    # 3. Делаем финальный прогон РК4 для построения графика
+    result_data = runge_kutta(math.radians(final_theta), math.radians(final_psi), w_x, w_z)
+    
+    # Контрольный вывод результатов
+    final_x = result_data[:, 2][-1]
+    final_z = result_data[:, 3][-1]
+    
+    print(f'\n{"="*60}\n')
+    print(f"РЕЗУЛЬТАТЫ РАСЧЕТА:")
+    print(f" -> Требуемый угол возвышения (Theta): {round(final_theta, 4)}°")
+    print(f" -> Требуемый угол азимута (Psi):     {round(final_psi, 4)}°\n")
+    print(f'{"-"*60}')
+    print(f"Итоговая точка падения снаряда:")
+    print(f" -> По оси X (Дальность): {round(final_x, 3)} м. (Цель: {TARGET_DISTANCE})")
+    print(f" -> По оси Z (Отклонение): {round(final_z, 3)} м. (Цель: {TARGET_Z})")
+    print(f'\n{"="*60}\n')
+    
+    # 4. Передаем массив в твой красивый 3D график!
+    create_trajectory_from_plot(result_data)
+
+if __name__ == "__main__":
+    main()
